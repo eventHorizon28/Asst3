@@ -14,7 +14,7 @@
 
 int sfd;
 
-int netopen()
+int nopen()
 {
 	int i, fd = -1;
 	char param_length[INT_STR_LEN];
@@ -72,7 +72,7 @@ int main(int argc, char** argv)
 		return -1;
 	}
 
-	if(setsockopt(sfd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt)) == -1)
+	if(setsockopt(new_socket, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt)) == -1)
 	{
 		printf("setsocketopt error, errno %s\n", strerror(errno));
 		return 0;
@@ -110,13 +110,13 @@ int main(int argc, char** argv)
 		read(sfd, operation, atoi(operation_len_char));
 
 		if(strlen(operation) == 7 && strcmp(operation, "netopen"))
-			netopen();
-		else if(strlen(operation) == 7 && strcmp(operation, "netread"))
-			netread();
+			nopen();
+		/*else if(strlen(operation) == 7 && strcmp(operation, "netread"))
+			nread();
 		else if(strcmp(operation, "netwrite"))
-			netwrite();
+			nwrite();
 		else
-			netclose();
+			nclose();*/
 	}
 
 	return 0;	

@@ -8,6 +8,7 @@
 #include <errno.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include "libnetfiles.h"
 
 #define PORT 34567
 #define INT_STR_LEN 8
@@ -49,16 +50,20 @@ int netserverinit(char* hostname)
 	return 0;
 }
 
-int netopen(char* open_path, char* flags_str)
+int netopen(char* open_path, int flags)
 {
 	int i;
 	char param_length[INT_STR_LEN];
-	char mode_str[INT_STR_LEN];
-
+	char flags_str[INT_STR_LEN];
+	char netfd_str[INT_STR_LEN];
+	int netfd;
 	i = 0;
+
 	while(i<INT_STR_LEN)
 	{
 	        param_length[i] = '\0';
+		flags_str[i] = '\0';
+		netfd_str[i] = '\0';
 		i++;
 	}
 
@@ -99,21 +104,35 @@ int netopen(char* open_path, char* flags_str)
 	write(sfd, flags_str, 6);
 	printf("message sent\n");
 
-	read(sfd, fd_str, INT_STR_LEN);
+	read(sfd, netfd_str, INT_STR_LEN);
 
 	i = 0;
 	while(i < INT_STR_LEN)
 	{
-		if(!isdigit(fd_str[i]))
-			fd_str[i] = '\0';
+		if(!isdigit(netfd_str[i]))
+			netfd_str[i] = '\0';
 
 		i++;
 	}
 
-	fd = atoi(fd_str);
-	fd += 10;
-	fd *= -1;
+	netfd = atoi(netfd_str);
+	netfd += 10;
+	netfd *= -1;
 
-	return fd;
+	return netfd;
 }
 
+int netread(int netfd, char* buffer, int bytes)
+{
+	return 0;
+}
+
+int netwrite(int netfd, char* buffer, int bytes)
+{
+	return 0;
+}
+
+int netclose(int netfd)
+{
+	return 0;
+}
