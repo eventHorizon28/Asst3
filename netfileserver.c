@@ -20,7 +20,8 @@ int nopen()
 	char param_length[INT_STR_LEN];
 	char * open_path;
 //cjamge the length of flags_str string
-	char flags_str[7];
+	char flags_str[2];
+	char fd_str[INT_STR_LEN];
 
 	read(sfd, param_length, INT_STR_LEN);
 
@@ -28,27 +29,65 @@ int nopen()
 	while(i < INT_STR_LEN)
 	{
 		if(!isdigit(param_length[i]))
+		{
 			param_length[i] = '\0';
-
+			break;
+		}
 		i++;
 	}
 
 	open_path = (char*)malloc((atoi(param_length)+1)*sizeof(char));
 	read(sfd, open_path, atoi(param_length));
-	read(sfd, flags_str, 6);
-	flags_str[6] = '\0';
+	read(sfd, flags_str, 1);
+	flags_str[1] = '\0';
 	
-	if(strcmp(flags_str, "O_RDWR"))
+	if(O_RDWR == atoi(flags_str))
 		fd = open(open_path, O_RDWR);
-	else if(strcmp(flags_str, "O_RDONLY"))
+	else if(O_RDONLY == atoi(flags_str))
 		fd = open(open_path, O_RDONLY);
 	else
 		fd = open(open_path, O_WRONLY);
 
 	if(fd == -1)
+	{
 		printf("%s\n", strerror(errno));
+	}
+	
+	sprintf(fd_str, "%d", fd);
 
-	return fd;
+	switch(strlen(param_length))
+	{
+		case 0:
+			printf("no string passed");
+			return 0;
+		case 1:
+			sprintf(fd_str, "%d-------", fd);
+			break;
+		case 2:
+			sprintf(fd_str, "%d------", fd);
+			break;
+		case 3:
+			sprintf(fd_str, "%d-----", fd);
+			break;
+		case 4:
+			sprintf(fd_str, "%d----", fd);
+			break;
+		case 5:
+			sprintf(fd_str, "%d---", fd);
+			break;
+		case 6:
+			sprintf(fd_str, "%d--", fd);
+			break;
+		case 7:
+			sprintf(fd_str, "%d-", fd);
+			break;
+		case 8:
+			break;
+	}
+
+	write(sfd, fd_str, INT_STR_LEN);
+
+	free(open_path);
 }
 
 
@@ -56,15 +95,11 @@ int main(int argc, char** argv)
 {
 	int new_socket;
 	struct sockaddr_in address;
-	int opt = 1;
+	int opt = 1, readval = 0;
 	int addrlen = sizeof(address);
-	char operation_len_char[2];
-	int operation_len;
-	char* operation;
-	sfd = -1;
-	//resetting buffer
+	char operation[5];
 
-	operation_len_char[1] = '\0';
+	sfd = -1;
 
 	if((new_socket = socket(AF_INET, SOCK_STREAM, 0)) == -1)
 	{
@@ -101,23 +136,29 @@ int main(int argc, char** argv)
 		return -1;
 	}
 
+	printf("connection established\n");
 	//WHAT WOULD HAPPEN TO THE "SFD" IF THERE ARE MULTIPLE CALLS TO THE SERVER?
-	//this should be inside thread
-	while(1)
+	readval = read(sfd, operation, 5);		
+//this should be inside thread
+	while(readval > 0)
 	{
-		read(sfd, operation_len_char, 1);
-		operation = (char*)malloc((atoi(operation_len_char)+1)*sizeof(char));
-		read(sfd, operation, atoi(operation_len_char));
-
-		if(strlen(operation) == 7 && strcmp(operation, "netopen"))
+		if(strcmp(operation, "open-"))
+		{
 			nopen();
-		/*else if(strlen(operation) == 7 && strcmp(operation, "netread"))
+			operation[0] = '\0';
+			operation[4] = '\0';
+		}
+		/*else if(strcmp(operation, "read-"))
 			nread();
-		else if(strcmp(operation, "netwrite"))
+		else if(strcmp(operation, "write"))
 			nwrite();
-		else
+		else if(strcmp(operation, "close"
 			nclose();*/
+		else
+			break;
+
+		readval = read(sfd, operation, 5);	
 	}
 
-	return 0;	
+	return 0;
 }

@@ -10,6 +10,8 @@
 int main(int argc, char** argv)
 {
 	int sfd = -1;
+	int netfd = -1;
+
 	sfd = netserverinit("pwd.cs.rutgers.edu");
 
 	printf("O_RDWR = %d, O_RDONLY = %d, O_WRONLY = %d\n", O_RDWR, O_RDONLY, O_WRONLY);
@@ -21,5 +23,6 @@ int main(int argc, char** argv)
 	else
 		printf("sfd: %d\n", sfd);
 
-	
+	netfd = netopen("./test.txt", O_RDWR);
+	printf("%d\n", netfd);
 }

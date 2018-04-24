@@ -47,27 +47,29 @@ int netserverinit(char* hostname)
 	}
 	printf("connection established\n");
 
-	return 0;
+	return sfd;
 }
 
 int netopen(char* open_path, int flags)
 {
 	int i;
+	char operation[] = {'o', 'p', 'e', 'n', '-'};
 	char param_length[INT_STR_LEN];
-	char flags_str[INT_STR_LEN];
+	char flags_str[2];
 	char netfd_str[INT_STR_LEN];
 	int netfd;
 	i = 0;
 
+	write(sfd, operation, 5);
+
 	while(i<INT_STR_LEN)
 	{
 	        param_length[i] = '\0';
-		flags_str[i] = '\0';
-		netfd_str[i] = '\0';
 		i++;
 	}
 
 	sprintf(param_length, "%d", strlen(open_path));
+	sprintf(flags_str, "%d", flags);
 	switch(strlen(param_length))
 	{
 		case 0:
@@ -101,7 +103,7 @@ int netopen(char* open_path, int flags)
 
 	write(sfd, param_length, INT_STR_LEN);
 	write(sfd, open_path , strlen(open_path));
-	write(sfd, flags_str, 6);
+	write(sfd, flags_str, 1);
 	printf("message sent\n");
 
 	read(sfd, netfd_str, INT_STR_LEN);
@@ -110,12 +112,15 @@ int netopen(char* open_path, int flags)
 	while(i < INT_STR_LEN)
 	{
 		if(!isdigit(netfd_str[i]))
+		{
 			netfd_str[i] = '\0';
-
+			break;
+		}
 		i++;
 	}
 
 	netfd = atoi(netfd_str);
+	printf("fd = %d\n", netfd);
 	netfd += 10;
 	netfd *= -1;
 
