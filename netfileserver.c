@@ -14,10 +14,10 @@
 #define PORT 34567
 #define INT_STR_LEN 8
 
-int sfd;
+
 pthread_mutex_t mute = PTHREAD_MUTEX_INITIALIZER;
 
-int nopen()
+void nopen(int sfd)
 {
 	int i, fd = -1, h_errno = -1;
 	char param_length[INT_STR_LEN];
@@ -29,15 +29,13 @@ int nopen()
 
 	read(sfd, param_length, INT_STR_LEN);
 
-	i = 0;
-	while(i < INT_STR_LEN)
+	for(i = 0; i < INT_STR_LEN; i++)
 	{
 		if(!isdigit(param_length[i]))
 		{
 			param_length[i] = '\0';
 			break;
 		}
-		i++;
 	}
 
 	open_path = (char*)malloc((atoi(param_length)+1)*sizeof(char));
@@ -62,27 +60,27 @@ int nopen()
 		{
 			case 0:
 				printf("no string passed");
-				return 0;
+				return;
 			case 1:
-				sprintf(fd_str, "%d-------", h_errno);
+				sprintf(errno_str, "%d-------", h_errno);
 				break;
 			case 2:
-				sprintf(fd_str, "%d------", h_errno);
+				sprintf(errno_str, "%d------", h_errno);
 				break;
 			case 3:
-				sprintf(fd_str, "%d-----", h_errno);
+				sprintf(errno_str, "%d-----", h_errno);
 				break;
 			case 4:
-				sprintf(fd_str, "%d----", h_errno);
+				sprintf(errno_str, "%d----", h_errno);
 				break;
 			case 5:
-				sprintf(fd_str, "%d---", h_errno);
+				sprintf(errno_str, "%d---", h_errno);
 				break;
 			case 6:
-				sprintf(fd_str, "%d--", h_errno);
+				sprintf(errno_str, "%d--", h_errno);
 				break;
 			case 7:
-				sprintf(fd_str, "%d-", h_errno);
+				sprintf(errno_str, "%d-", h_errno);
 				break;
 			case 8:
 				break;
@@ -96,11 +94,11 @@ int nopen()
 
 		sprintf(fd_str, "%d", fd);
 
-		switch(strlen(param_length))
+		switch(strlen(fd_str))
 		{
 			case 0:
 				printf("no string passed");
-				return 0;
+				return;
 			case 1:
 				sprintf(fd_str, "%d-------", fd);
 				break;
@@ -132,9 +130,119 @@ int nopen()
 	free(open_path);
 }
 
-int nread()
+int nread(int sfd)
 {
-	return 0;
+	int i;
+	char bytes_str[INT_STR_LEN];
+	char netfd_str[INT_STR_LEN];
+	int bytes_read;
+	char bytes_read_str[INT_STR_LEN];
+	char* read_buffer;
+	int h_errno;
+	char errno_str[INT_STR_LEN];
+
+	read(sfd, netfd_str, INT_STR_LEN);
+	read(sfd, bytes_str, INT_STR_LEN);
+	
+	for(i = 0; i < INT_STR_LEN; i++)
+	{
+		if(!isdigit(netfd_str[i]))
+		{
+			netfd_str[i] = '\0';
+			break;
+		}
+	}
+	for(i = 0; i < INT_STR_LEN; i++)
+	{
+		if(!isdigit(bytes_str[i]))
+		{
+			bytes_str[i] = '\0';
+			break;
+		}
+	}
+
+	//MIGHT HAVE TO TAKE CARE OF NULL TERMINATION
+	read_buffer = (char*)malloc(atoi(bytes_str)*sizeof(char));
+	bytes_read = read(atoi(netfd_str), read_buffer, atoi(bytes_str));
+	if(bytes_read == -1)
+	{
+		printf("Read error: %s, fd = %d\n", strerror(errno), atoi(netfd_str));
+		h_errno = errno;
+		write(sfd, "fail", 4);
+		sprintf(errno_str, "%d", h_errno);
+
+		switch(strlen(errno_str))
+		{
+			case 0:
+				printf("no string passed");
+				return;
+			case 1:
+				sprintf(errno_str, "%d-------", h_errno);
+				break;
+			case 2:
+				sprintf(errno_str, "%d------", h_errno);
+				break;
+			case 3:
+				sprintf(errno_str, "%d-----", h_errno);
+				break;
+			case 4:
+				sprintf(errno_str, "%d----", h_errno);
+				break;
+			case 5:
+				sprintf(errno_str, "%d---", h_errno);
+				break;
+			case 6:
+				sprintf(errno_str, "%d--", h_errno);
+				break;
+			case 7:
+				sprintf(errno_str, "%d-", h_errno);
+				break;
+			case 8:
+				break;
+		}
+
+		write(sfd, errno_str, INT_STR_LEN);
+	}
+	else
+	{
+		write(sfd, "pass", 4);
+
+		sprintf(bytes_read_str, "%d", bytes_read);
+
+		switch(strlen(bytes_read_str))
+		{
+			case 0:
+				printf("no string passed");
+				return;
+			case 1:
+				sprintf(bytes_read_str, "%d-------", bytes_read);
+				break;
+			case 2:
+				sprintf(bytes_read_str, "%d------", bytes_read);
+				break;
+			case 3:
+				sprintf(bytes_read_str, "%d-----", bytes_read);
+				break;
+			case 4:
+				sprintf(bytes_read_str, "%d----", bytes_read);
+				break;
+			case 5:
+				sprintf(bytes_read_str, "%d---", bytes_read);
+				break;
+			case 6:
+				sprintf(bytes_read_str, "%d--", bytes_read);
+				break;
+			case 7:
+				sprintf(bytes_read_str, "%d-", bytes_read);
+				break;
+			case 8:
+				break;
+		}
+
+		write(sfd, bytes_read_str, INT_STR_LEN);
+		write(sfd, read_buffer, bytes_read);
+	}
+
 }
 
 void * worker_thread(void * arg)
@@ -154,18 +262,23 @@ void * worker_thread(void * arg)
 
 	while(readval>0)
 	{
-		if(strcmp(operation, "open-"))
+		if(strcmp(operation, "open-") == 0)
 		{
-			nopen();
+			nopen(sfd);
 			operation[0] = '\0';
 			operation[4] = '\0';
 			operation[5] = '\0';
 		}
-		else if(strcmp(operation, "read-"))
-			nread();
-		/*else if(strcmp(operation, "write"))
+		else if(strcmp(operation, "read-") == 0)
+		{
+			nread(sfd);
+			operation[0] = '\0';
+			operation[4] = '\0';
+			operation[5]='\0';
+		}
+		/*else if(strcmp(operation, "write") == 0)
 			nwrite();
-		else if(strcmp(operation, "close"
+		else if(strcmp(operation, "close") == 0)
 			nclose();*/
 		else
 			break;
@@ -198,11 +311,13 @@ void * worker_thread(void * arg)
 
 int main(int argc, char** argv)
 {
-	int new_socket;
+	int new_socket, sfd;
 	struct sockaddr_in address;
 	int opt = 1, num_clients = 0;
 	int addrlen = sizeof(address);
 	pthread_t tid;
+
+	char operation[6];
 
 	sfd = -1;
 
@@ -235,8 +350,43 @@ int main(int argc, char** argv)
 	}
 
 //WHAT WOULD HAPPEN TO THE "SFD" IF THERE ARE MULTIPLE CALLS TO THE SERVER?
+	sfd = accept(new_socket, (struct sockaddr *)&address, (socklen_t*)&addrlen);
+
+		if(sfd == -1)
+		{
+			printf("accept failure\n");
+			return -1;
+		}
+	printf("connection established\n");
 	
+ 	read(sfd, operation, 5);
+	operation[5] = '\0';
+
+	int i = 0;
+	while(i<2)
+	{
+		if(strcmp(operation, "open-") == 0)
+		{
+			nopen(sfd);
+			operation[0] = '\0';
+			operation[4] = '\0';
+			read(sfd, operation, 5);
+			operation[5] = '\0';
+	
+		}
+		else if(strcmp(operation, "read-") == 0)
+		{
+			nread(sfd);
+			operation[0] = '\0';
+			operation[4] = '\0';
+			read(sfd, operation, 5);
+			operation[5] = '\0';
+		}
+		i++;
+	}
+/*
 	int rc;
+	
 	while(1)
 	{
 		sfd = accept(new_socket, (struct sockaddr *)&address, (socklen_t*)&addrlen);
@@ -248,7 +398,6 @@ int main(int argc, char** argv)
 			return -1;
 		}
 		//when they accept a client increment the counter
-		printf(" new= %dnwn\n", new_socket);
 		num_clients++;
 		
 		int k=0;
@@ -270,9 +419,9 @@ int main(int argc, char** argv)
 			num_clients--;
 		}
 		//if flag is == to something make swicth then send it 
-		printf("%d\n",rc);
+		//printf("%d\n",rc);
 		k++;
 	}
-
+*/
 	return 0;
 }

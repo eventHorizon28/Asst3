@@ -117,7 +117,7 @@ int netopen(char* open_path, int flags)
 
 	//if it was a fail
 	//set errno and return -1
-	if(strcmp(pass_str, "fail"))
+	if(strcmp(pass_str, "fail") == 0)
 	{
 		read(sfd, errno_str, INT_STR_LEN);
 
@@ -130,6 +130,7 @@ int netopen(char* open_path, int flags)
 			}
 		}
 		errno = atoi(errno_str);
+		printf("%s\n", strerror(errno));
 		netfd = -1;
 	}
 	//else read the netfd and convert it to the negative fd
@@ -250,7 +251,7 @@ int netread(int netfd, char* buffer, int bytes)
 	pass_str[4] = '\0';
 	
 	//if the read failed on the server side
-	if(strcmp(pass_str, "fail"))
+	if(strcmp(pass_str, "fail") == 0)
 	{
 		//get and set errno
 		read(sfd, errno_str, INT_STR_LEN);
