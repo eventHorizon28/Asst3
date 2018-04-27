@@ -30,8 +30,10 @@ int main(int argc, char** argv)
 	else
 		printf("sfd: %d\n", sfd);
 
-	netfd = netopen("./test.txt", O_WRONLY);
+	netfd = netopen("./test.txt", O_RDWR);
 	printf("%d\n", netfd);
 
 	netread(netfd, buffer, 100);
+
+	printf("%s\n", buffer);
 }

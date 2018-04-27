@@ -140,6 +140,7 @@ int nread(int sfd)
 	char* read_buffer;
 	int h_errno;
 	char errno_str[INT_STR_LEN];
+	int netfd;
 
 	read(sfd, netfd_str, INT_STR_LEN);
 	read(sfd, bytes_str, INT_STR_LEN);
@@ -163,7 +164,8 @@ int nread(int sfd)
 
 	//MIGHT HAVE TO TAKE CARE OF NULL TERMINATION
 	read_buffer = (char*)malloc(atoi(bytes_str)*sizeof(char));
-	bytes_read = read(atoi(netfd_str), read_buffer, atoi(bytes_str));
+	netfd = atoi(netfd_str);
+	bytes_read = read(netfd, read_buffer, atoi(bytes_str));
 	if(bytes_read == -1)
 	{
 		printf("Read error: %s, fd = %d\n", strerror(errno), atoi(netfd_str));
