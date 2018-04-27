@@ -8,20 +8,24 @@
 #include<ctype.h>
 #include<sys/stat.h>
 #include<fcntl.h>
+#include<pthread.h>
+#include<unistd.h>
 
 #define PORT 34567
 #define INT_STR_LEN 8
 
 int sfd;
+pthread_mutex_t mute = PTHREAD_MUTEX_INITIALIZER;
 
 int nopen()
 {
-	int i, fd = -1;
+	int i, fd = -1, h_errno = -1;
 	char param_length[INT_STR_LEN];
 	char * open_path;
 //cjamge the length of flags_str string
 	char flags_str[2];
 	char fd_str[INT_STR_LEN];
+	char errno_str[INT_STR_LEN];
 
 	read(sfd, param_length, INT_STR_LEN);
 
@@ -50,54 +54,155 @@ int nopen()
 
 	if(fd == -1)
 	{
-		printf("%s\n", strerror(errno));
-	}
-	
-	sprintf(fd_str, "%d", fd);
+		h_errno = errno;
+		write(sfd, "fail", 4);
+		sprintf(errno_str, "%d", h_errno);
 
-	switch(strlen(param_length))
+		switch(strlen(errno_str))
+		{
+			case 0:
+				printf("no string passed");
+				return 0;
+			case 1:
+				sprintf(fd_str, "%d-------", h_errno);
+				break;
+			case 2:
+				sprintf(fd_str, "%d------", h_errno);
+				break;
+			case 3:
+				sprintf(fd_str, "%d-----", h_errno);
+				break;
+			case 4:
+				sprintf(fd_str, "%d----", h_errno);
+				break;
+			case 5:
+				sprintf(fd_str, "%d---", h_errno);
+				break;
+			case 6:
+				sprintf(fd_str, "%d--", h_errno);
+				break;
+			case 7:
+				sprintf(fd_str, "%d-", h_errno);
+				break;
+			case 8:
+				break;
+		}
+
+		write(sfd, errno_str, INT_STR_LEN);
+	}
+	else
 	{
-		case 0:
-			printf("no string passed");
-			return 0;
-		case 1:
-			sprintf(fd_str, "%d-------", fd);
-			break;
-		case 2:
-			sprintf(fd_str, "%d------", fd);
-			break;
-		case 3:
-			sprintf(fd_str, "%d-----", fd);
-			break;
-		case 4:
-			sprintf(fd_str, "%d----", fd);
-			break;
-		case 5:
-			sprintf(fd_str, "%d---", fd);
-			break;
-		case 6:
-			sprintf(fd_str, "%d--", fd);
-			break;
-		case 7:
-			sprintf(fd_str, "%d-", fd);
-			break;
-		case 8:
-			break;
-	}
+		write(sfd, "pass", 4);
 
-	write(sfd, fd_str, INT_STR_LEN);
+		sprintf(fd_str, "%d", fd);
+
+		switch(strlen(param_length))
+		{
+			case 0:
+				printf("no string passed");
+				return 0;
+			case 1:
+				sprintf(fd_str, "%d-------", fd);
+				break;
+			case 2:
+				sprintf(fd_str, "%d------", fd);
+				break;
+			case 3:
+				sprintf(fd_str, "%d-----", fd);
+				break;
+			case 4:
+				sprintf(fd_str, "%d----", fd);
+				break;
+			case 5:
+				sprintf(fd_str, "%d---", fd);
+				break;
+			case 6:
+				sprintf(fd_str, "%d--", fd);
+				break;
+			case 7:
+				sprintf(fd_str, "%d-", fd);
+				break;
+			case 8:
+				break;
+		}
+
+		write(sfd, fd_str, INT_STR_LEN);
+	}
 
 	free(open_path);
 }
 
+int nread()
+{
+	return 0;
+}
+
+void * worker_thread(void * arg)
+{
+	int sfd = (int)(long)arg;
+	int readval = 0;
+	char operation[6];
+
+	printf("STARTED\n");
+	
+	//start of critical section due to read fuction lock it
+	//m isglobal used to init mutex
+	pthread_mutex_lock(&mute);
+
+	readval = read(sfd, operation, 5);		
+	operation[5] = '\0';
+
+	while(readval>0)
+	{
+		if(strcmp(operation, "open-"))
+		{
+			nopen();
+			operation[0] = '\0';
+			operation[4] = '\0';
+			operation[5] = '\0';
+		}
+		else if(strcmp(operation, "read-"))
+			nread();
+		/*else if(strcmp(operation, "write"))
+			nwrite();
+		else if(strcmp(operation, "close"
+			nclose();*/
+		else
+			break;
+
+		readval = read(sfd, operation, 5);
+		printf("readval = %d\n", readval);
+	}
+
+/*	read(new_socket, param_length, 5);
+
+	i = 0;
+	while(i<5)
+	{
+		if(!isdigit(param_length[i]))
+		{
+			param_length[i] = '\0';
+			break;
+		}
+		i++;
+	}
+
+	printf("helloSSSSSS %s %d\n", param_length, atoi(param_length));
+	buffer = (char*)malloc((atoi(param_length)+1)*sizeof(char));
+	read(new_socket, buffer, atoi(param_length));
+	printf("%s\n", buffer);
+*/
+	pthread_mutex_unlock(&mute);
+	return NULL;
+}
 
 int main(int argc, char** argv)
 {
 	int new_socket;
 	struct sockaddr_in address;
-	int opt = 1, readval = 0;
+	int opt = 1, num_clients = 0;
 	int addrlen = sizeof(address);
-	char operation[5];
+	pthread_t tid;
 
 	sfd = -1;
 
@@ -129,35 +234,44 @@ int main(int argc, char** argv)
 		return -1;
 	}
 
-	sfd = accept(new_socket, (struct sockaddr *)&address, (socklen_t*)&addrlen);
-	if(sfd == -1)
+//WHAT WOULD HAPPEN TO THE "SFD" IF THERE ARE MULTIPLE CALLS TO THE SERVER?
+	
+	int rc;
+	while(1)
 	{
-		printf("accept failure\n");
-		return -1;
-	}
-
+		sfd = accept(new_socket, (struct sockaddr *)&address, (socklen_t*)&addrlen);
 	printf("connection established\n");
-	//WHAT WOULD HAPPEN TO THE "SFD" IF THERE ARE MULTIPLE CALLS TO THE SERVER?
-	readval = read(sfd, operation, 5);		
-//this should be inside thread
-	while(readval > 0)
-	{
-		if(strcmp(operation, "open-"))
+	
+		if(sfd == -1)
 		{
-			nopen();
-			operation[0] = '\0';
-			operation[4] = '\0';
+			printf("accept failure\n");
+			return -1;
 		}
-		/*else if(strcmp(operation, "read-"))
-			nread();
-		else if(strcmp(operation, "write"))
-			nwrite();
-		else if(strcmp(operation, "close"
-			nclose();*/
-		else
-			break;
+		//when they accept a client increment the counter
+		printf(" new= %dnwn\n", new_socket);
+		num_clients++;
+		
+		int k=0;
+		if(k<num_clients)
+		{
+			rc=pthread_create(&tid, NULL, worker_thread, (void *)(long)sfd);
 
-		readval = read(sfd, operation, 5);	
+			//printf("%d\n",rc);
+			//	pthread_join(tid,NULL);
+			//	printf("joinedd\n");
+			if(rc)
+			{
+				printf("ERROR; return code from pthread_create() is %d\n", rc);
+				return(-1);
+
+			}
+			pthread_detach(tid);
+
+			num_clients--;
+		}
+		//if flag is == to something make swicth then send it 
+		printf("%d\n",rc);
+		k++;
 	}
 
 	return 0;

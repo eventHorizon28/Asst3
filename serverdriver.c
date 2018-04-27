@@ -11,8 +11,15 @@ int main(int argc, char** argv)
 {
 	int sfd = -1;
 	int netfd = -1;
+	char buffer[100];
 
-	sfd = netserverinit("pwd.cs.rutgers.edu");
+	if(argc != 2)
+	{
+		printf("Please enter the server to connect as the second argument\n");
+		return 0;
+	}
+
+	sfd = netserverinit(argv[1]);
 
 	printf("O_RDWR = %d, O_RDONLY = %d, O_WRONLY = %d\n", O_RDWR, O_RDONLY, O_WRONLY);
 	if(sfd == -1)
@@ -25,4 +32,6 @@ int main(int argc, char** argv)
 
 	netfd = netopen("./test.txt", O_RDWR);
 	printf("%d\n", netfd);
+
+	netread(netfd, buffer, 100);
 }
