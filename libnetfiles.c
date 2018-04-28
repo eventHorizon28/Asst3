@@ -272,6 +272,7 @@ int netread(int netfd, char* buffer, int bytes)
 			}
 		}
 		errno = atoi(errno_str);
+		printf("%s\n", strerror(errno));
 		return -1;
 	}
 	else
@@ -409,6 +410,7 @@ int netwrite(int netfd, char* buffer, int bytes)
 			}
 		}
 		errno = atoi(errno_str);
+		printf("%s\n", strerror(errno));
 		return -1;
 	}
 	else
@@ -431,5 +433,76 @@ int netwrite(int netfd, char* buffer, int bytes)
 
 int netclose(int netfd)
 {
+	char netfd_str[INT_STR_LEN];
+	char pass_str[5];
+	int i;
+	char errno_str[INT_STR_LEN];
+
+	if(netfd == -9)
+	{
+		errno = EBADF;
+		return -1;
+	}
+
+	write(sfd, "close", 5);
+	netfd *= -1;
+	netfd -= 10;
+	sprintf(netfd_str, "%d", netfd);
+	switch(strlen(netfd_str))
+	{
+		case 0:
+			printf("error in netfd\n");
+			return 0;
+		case 1:
+			sprintf(netfd_str, "%d-------", netfd);
+			break;
+		case 2:
+			sprintf(netfd_str, "%d------", netfd);
+			break;
+		case 3:
+			sprintf(netfd_str, "%d-----", netfd);
+			break;
+		case 4:
+			sprintf(netfd_str, "%d----", netfd);
+			break;
+		case 5:
+			sprintf(netfd_str, "%d---", netfd);
+			break;
+		case 6:
+			sprintf(netfd_str, "%d--", netfd);
+			break;
+		case 7:
+			sprintf(netfd_str, "%d-", netfd);
+			break;
+		case 8:
+			break;
+
+	}
+	//send params for the read on server side
+	write(sfd, netfd_str, INT_STR_LEN);
+
+	//get back the pass/fail string
+	read(sfd, pass_str, 4);
+	pass_str[4] = '\0';
+	
+	//if the read failed on the server side
+	if(strcmp(pass_str, "fail") == 0)
+	{
+		//get and set errno
+		read(sfd, errno_str, INT_STR_LEN);
+
+		for(i = 0; i < INT_STR_LEN; i++)
+		{
+			if(!isdigit(errno_str[i]))
+			{
+				errno_str[i] = '\0';
+				break;
+			}
+		}
+		errno = atoi(errno_str);
+		printf("%s\n", strerror(errno));
+		return -1;
+	}
+
 	return 0;
 }

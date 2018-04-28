@@ -2,6 +2,8 @@
 2. Make sure one thread is not able to close some other thread's file descriptor, create a linked list with the sfd and the netfd for this
 3. see h_errno documentation in the assignment description
 4. do error checking for -1 fd on the client side itself?
+5. set h_errno for network establishment errors
+6. when do we have to close the socket?
 
 ERRORS:
 1. nread not working for some reason

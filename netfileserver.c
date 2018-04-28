@@ -362,6 +362,71 @@ void nwrite(int sfd)
 
 }
 
+void nclose(int sfd)
+{
+	char netfd_str[INT_STR_LEN];
+	int i;
+	int close_value;
+	int n_errno;
+	char errno_str[INT_STR_LEN];
+
+	read(sfd, netfd_str, INT_STR_LEN);
+
+	for(i = 0; i<INT_STR_LEN; i++)
+	{
+		if(!isdigit(netfd_str[i]))
+		{
+			netfd_str[i] = '\0';
+			break;
+		}
+	}
+
+	close_value = close(atoi(netfd_str));
+	if(close_value == -1)
+	{
+		n_errno = errno;
+		printf("write error: %s, close_value = %d\n", strerror(errno), close_value);
+		write(sfd, "fail", 4);
+		sprintf(errno_str, "%d", n_errno);
+
+		switch(strlen(errno_str))
+		{
+			case 0:
+				printf("no string passed");
+				return;
+			case 1:
+				sprintf(errno_str, "%d-------", n_errno);
+				break;
+			case 2:
+				sprintf(errno_str, "%d------", n_errno);
+				break;
+			case 3:
+				sprintf(errno_str, "%d-----", n_errno);
+				break;
+			case 4:
+				sprintf(errno_str, "%d----", n_errno);
+				break;
+			case 5:
+				sprintf(errno_str, "%d---", n_errno);
+				break;
+			case 6:
+				sprintf(errno_str, "%d--", n_errno);
+				break;
+			case 7:
+				sprintf(errno_str, "%d-", n_errno);
+				break;
+			case 8:
+				break;
+		}
+
+		write(sfd, errno_str, INT_STR_LEN);
+	}
+	else
+	{
+		write(sfd, "pass", 4);
+	}
+}
+
 void * worker_thread(void * arg)
 {
 	int sfd = (int)(long)arg;
@@ -433,7 +498,7 @@ int main(int argc, char** argv)
 	int opt = 1, num_clients = 0;
 	int addrlen = sizeof(address);
 	pthread_t tid;
-
+	int i;
 	char operation[6];
 
 	sfd = -1;
@@ -479,8 +544,7 @@ int main(int argc, char** argv)
  	read(sfd, operation, 5);
 	operation[5] = '\0';
 
-	int i = 0;
-	while(i<3)
+	for(i = 0; i < 5; i++)
 	{
 		if(strcmp(operation, "open-") == 0)
 		{
@@ -507,7 +571,14 @@ int main(int argc, char** argv)
 			read(sfd, operation, 5);
 			operation[5] = '\0';
 		}
-		i++;
+		else
+		{
+			nclose(sfd);
+			operation[0] = '\0';
+			operation[4] = '\0';
+			read(sfd, operation, 5);
+			operation[5] = '\0';
+		}
 	}
 /*
 	int rc;

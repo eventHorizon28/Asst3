@@ -35,5 +35,9 @@ int main(int argc, char** argv)
 
 	netread(netfd, buffer, 100);
 	netwrite(netfd, write_buff, 7);
+
+	netclose(netfd);
+	
+	netread(netfd, buffer, 100);
 	printf("%s\n", buffer);
 }
