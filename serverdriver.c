@@ -12,7 +12,7 @@ int main(int argc, char** argv)
 	int sfd = -1;
 	int netfd = -1;
 	char buffer[100];
-
+	char write_buff[] = {'k', 's', 'h', 'i', 't', 'i', 'j'};
 	if(argc != 2)
 	{
 		printf("Please enter the server to connect as the second argument\n");
@@ -34,6 +34,6 @@ int main(int argc, char** argv)
 	printf("%d\n", netfd);
 
 	netread(netfd, buffer, 100);
-
+	netwrite(netfd, write_buff, 7);
 	printf("%s\n", buffer);
 }

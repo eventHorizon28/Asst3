@@ -168,6 +168,13 @@ int netread(int netfd, char* buffer, int bytes)
 	char errno_str[INT_STR_LEN];
 	char bytes_read_str[INT_STR_LEN];
 
+	//if fd is -1 on the server side
+	if(netfd == -9)
+	{
+		errno = EBADF; 
+		return -1;
+	}
+
 	write(sfd, operation, 5);
 
 	for(i = 0; i<INT_STR_LEN; i++)
@@ -289,7 +296,137 @@ int netread(int netfd, char* buffer, int bytes)
 
 int netwrite(int netfd, char* buffer, int bytes)
 {
-	return 0;
+	int i;
+	char operation[] = {'w', 'r', 'i', 't', 'e'};
+	char bytes_str[INT_STR_LEN];
+	char netfd_str[INT_STR_LEN];
+	char pass_str[5];
+	char errno_str[INT_STR_LEN];
+	char bytes_wrote_str[INT_STR_LEN];
+
+	//if the fd on server side is -1, -9 = (-1+10)*-1
+	if(netfd == -9)
+	{
+		errno = EBADF; 
+		return -1;
+	}
+
+	write(sfd, operation, 5);
+
+	for(i = 0; i<INT_STR_LEN; i++)
+	{
+	        bytes_str[i] = '\0';
+		netfd_str[i] = '\0';
+	}
+
+	sprintf(bytes_str, "%d", bytes);
+	switch(strlen(bytes_str))
+	{
+		case 0:
+			printf("error in num_bytes\n");
+			return 0;
+		case 1:
+			sprintf(bytes_str, "%d-------", bytes);
+			break;
+		case 2:
+			sprintf(bytes_str, "%d------", bytes);
+			break;
+		case 3:
+			sprintf(bytes_str, "%d-----", bytes);
+			break;
+		case 4:
+			sprintf(bytes_str, "%d----", bytes);
+			break;
+		case 5:
+			sprintf(bytes_str, "%d---", bytes);
+			break;
+		case 6:
+			sprintf(bytes_str, "%d--", bytes);
+			break;
+		case 7:
+			sprintf(bytes_str, "%d-", bytes);
+			break;
+		case 8:
+			break;
+
+	}
+	//decode netfd
+	netfd *= -1;
+	netfd -= 10;
+	sprintf(netfd_str, "%d", netfd);
+	switch(strlen(netfd_str))
+	{
+		case 0:
+			printf("error in netfd\n");
+			return 0;
+		case 1:
+			sprintf(netfd_str, "%d-------", netfd);
+			break;
+		case 2:
+			sprintf(netfd_str, "%d------", netfd);
+			break;
+		case 3:
+			sprintf(netfd_str, "%d-----", netfd);
+			break;
+		case 4:
+			sprintf(netfd_str, "%d----", netfd);
+			break;
+		case 5:
+			sprintf(netfd_str, "%d---", netfd);
+			break;
+		case 6:
+			sprintf(netfd_str, "%d--", netfd);
+			break;
+		case 7:
+			sprintf(netfd_str, "%d-", netfd);
+			break;
+		case 8:
+			break;
+
+	}
+	//send params for the read on server side
+	write(sfd, netfd_str, INT_STR_LEN);
+	write(sfd, bytes_str, INT_STR_LEN);
+
+	write(sfd, buffer, bytes);
+	//printf("message sent\n");
+	//get back the pass/fail string
+	read(sfd, pass_str, 4);
+	pass_str[4] = '\0';
+	
+	//if the read failed on the server side
+	if(strcmp(pass_str, "fail") == 0)
+	{
+		//get and set errno
+		read(sfd, errno_str, INT_STR_LEN);
+
+		for(i = 0; i < INT_STR_LEN; i++)
+		{
+			if(!isdigit(errno_str[i]))
+			{
+				errno_str[i] = '\0';
+				break;
+			}
+		}
+		errno = atoi(errno_str);
+		return -1;
+	}
+	else
+	{
+		//read the number of bytes read into the buffer
+		read(sfd, bytes_wrote_str, INT_STR_LEN);
+
+		for(i = 0; i < INT_STR_LEN; i++)
+		{
+			if(!isdigit(bytes_wrote_str[i]))
+			{
+				bytes_wrote_str[i] = '\0';
+				break;
+			}
+		}
+	}
+
+	return atoi(bytes_wrote_str);
 }
 
 int netclose(int netfd)

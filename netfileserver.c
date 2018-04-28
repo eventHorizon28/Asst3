@@ -19,7 +19,7 @@ pthread_mutex_t mute = PTHREAD_MUTEX_INITIALIZER;
 
 void nopen(int sfd)
 {
-	int i, fd = -1, h_errno = -1;
+	int i, fd = -1, n_errno = -1;
 	char param_length[INT_STR_LEN];
 	char * open_path;
 //cjamge the length of flags_str string
@@ -52,9 +52,9 @@ void nopen(int sfd)
 
 	if(fd == -1)
 	{
-		h_errno = errno;
+		n_errno = errno;
 		write(sfd, "fail", 4);
-		sprintf(errno_str, "%d", h_errno);
+		sprintf(errno_str, "%d", n_errno);
 
 		switch(strlen(errno_str))
 		{
@@ -62,25 +62,25 @@ void nopen(int sfd)
 				printf("no string passed");
 				return;
 			case 1:
-				sprintf(errno_str, "%d-------", h_errno);
+				sprintf(errno_str, "%d-------", n_errno);
 				break;
 			case 2:
-				sprintf(errno_str, "%d------", h_errno);
+				sprintf(errno_str, "%d------", n_errno);
 				break;
 			case 3:
-				sprintf(errno_str, "%d-----", h_errno);
+				sprintf(errno_str, "%d-----", n_errno);
 				break;
 			case 4:
-				sprintf(errno_str, "%d----", h_errno);
+				sprintf(errno_str, "%d----", n_errno);
 				break;
 			case 5:
-				sprintf(errno_str, "%d---", h_errno);
+				sprintf(errno_str, "%d---", n_errno);
 				break;
 			case 6:
-				sprintf(errno_str, "%d--", h_errno);
+				sprintf(errno_str, "%d--", n_errno);
 				break;
 			case 7:
-				sprintf(errno_str, "%d-", h_errno);
+				sprintf(errno_str, "%d-", n_errno);
 				break;
 			case 8:
 				break;
@@ -138,9 +138,8 @@ int nread(int sfd)
 	int bytes_read;
 	char bytes_read_str[INT_STR_LEN];
 	char* read_buffer;
-	int h_errno;
+	int n_errno;
 	char errno_str[INT_STR_LEN];
-	int netfd;
 
 	read(sfd, netfd_str, INT_STR_LEN);
 	read(sfd, bytes_str, INT_STR_LEN);
@@ -164,14 +163,13 @@ int nread(int sfd)
 
 	//MIGHT HAVE TO TAKE CARE OF NULL TERMINATION
 	read_buffer = (char*)malloc(atoi(bytes_str)*sizeof(char));
-	netfd = atoi(netfd_str);
-	bytes_read = read(netfd, read_buffer, atoi(bytes_str));
+	bytes_read = read(atoi(netfd_str), read_buffer, atoi(bytes_str));
 	if(bytes_read == -1)
 	{
 		printf("Read error: %s, fd = %d\n", strerror(errno), atoi(netfd_str));
-		h_errno = errno;
+		n_errno = errno;
 		write(sfd, "fail", 4);
-		sprintf(errno_str, "%d", h_errno);
+		sprintf(errno_str, "%d", n_errno);
 
 		switch(strlen(errno_str))
 		{
@@ -179,25 +177,25 @@ int nread(int sfd)
 				printf("no string passed");
 				return;
 			case 1:
-				sprintf(errno_str, "%d-------", h_errno);
+				sprintf(errno_str, "%d-------", n_errno);
 				break;
 			case 2:
-				sprintf(errno_str, "%d------", h_errno);
+				sprintf(errno_str, "%d------", n_errno);
 				break;
 			case 3:
-				sprintf(errno_str, "%d-----", h_errno);
+				sprintf(errno_str, "%d-----", n_errno);
 				break;
 			case 4:
-				sprintf(errno_str, "%d----", h_errno);
+				sprintf(errno_str, "%d----", n_errno);
 				break;
 			case 5:
-				sprintf(errno_str, "%d---", h_errno);
+				sprintf(errno_str, "%d---", n_errno);
 				break;
 			case 6:
-				sprintf(errno_str, "%d--", h_errno);
+				sprintf(errno_str, "%d--", n_errno);
 				break;
 			case 7:
-				sprintf(errno_str, "%d-", h_errno);
+				sprintf(errno_str, "%d-", n_errno);
 				break;
 			case 8:
 				break;
@@ -243,6 +241,123 @@ int nread(int sfd)
 
 		write(sfd, bytes_read_str, INT_STR_LEN);
 		write(sfd, read_buffer, bytes_read);
+	}
+
+}
+
+void nwrite(int sfd)
+{
+	int i;
+	char bytes_str[INT_STR_LEN];
+	char netfd_str[INT_STR_LEN];
+	int bytes_wrote;
+	char bytes_wrote_str[INT_STR_LEN];
+	char* write_buffer;
+	int n_errno;
+	char errno_str[INT_STR_LEN];
+	int netfd;
+
+	read(sfd, netfd_str, INT_STR_LEN);
+	read(sfd, bytes_str, INT_STR_LEN);
+	
+	for(i = 0; i < INT_STR_LEN; i++)
+	{
+		if(!isdigit(netfd_str[i]))
+		{
+			netfd_str[i] = '\0';
+			break;
+		}
+	}
+	for(i = 0; i < INT_STR_LEN; i++)
+	{
+		if(!isdigit(bytes_str[i]))
+		{
+			bytes_str[i] = '\0';
+			break;
+		}
+	}
+
+	//MIGHT HAVE TO TAKE CARE OF NULL TERMINATION
+	write_buffer = (char*)malloc(atoi(bytes_str)*sizeof(char));
+	read(sfd, write_buffer, atoi(bytes_str));
+	
+	bytes_wrote = write(atoi(netfd_str), write_buffer, atoi(bytes_str));
+	if(bytes_wrote == -1)
+	{
+		n_errno = errno;
+		printf("write error: %s, fd = %d\n", strerror(errno), atoi(netfd_str));
+		write(sfd, "fail", 4);
+		sprintf(errno_str, "%d", n_errno);
+
+		switch(strlen(errno_str))
+		{
+			case 0:
+				printf("no string passed");
+				return;
+			case 1:
+				sprintf(errno_str, "%d-------", n_errno);
+				break;
+			case 2:
+				sprintf(errno_str, "%d------", n_errno);
+				break;
+			case 3:
+				sprintf(errno_str, "%d-----", n_errno);
+				break;
+			case 4:
+				sprintf(errno_str, "%d----", n_errno);
+				break;
+			case 5:
+				sprintf(errno_str, "%d---", n_errno);
+				break;
+			case 6:
+				sprintf(errno_str, "%d--", n_errno);
+				break;
+			case 7:
+				sprintf(errno_str, "%d-", n_errno);
+				break;
+			case 8:
+				break;
+		}
+
+		write(sfd, errno_str, INT_STR_LEN);
+	}
+	else
+	{
+		write(sfd, "pass", 4);
+
+		sprintf(bytes_wrote_str, "%d", bytes_wrote);
+
+		switch(strlen(bytes_wrote_str))
+		{
+			case 0:
+				printf("no string passed");
+				return;
+			case 1:
+				sprintf(bytes_wrote_str, "%d-------", bytes_wrote);
+				break;
+			case 2:
+				sprintf(bytes_wrote_str, "%d------", bytes_wrote);
+				break;
+			case 3:
+				sprintf(bytes_wrote_str, "%d-----", bytes_wrote);
+				break;
+			case 4:
+				sprintf(bytes_wrote_str, "%d----", bytes_wrote);
+				break;
+			case 5:
+				sprintf(bytes_wrote_str, "%d---", bytes_wrote);
+				break;
+			case 6:
+				sprintf(bytes_wrote_str, "%d--", bytes_wrote);
+				break;
+			case 7:
+				sprintf(bytes_wrote_str, "%d-", bytes_wrote);
+				break;
+			case 8:
+				break;
+		}
+
+		write(sfd, bytes_wrote_str, INT_STR_LEN);
 	}
 
 }
@@ -365,7 +480,7 @@ int main(int argc, char** argv)
 	operation[5] = '\0';
 
 	int i = 0;
-	while(i<2)
+	while(i<3)
 	{
 		if(strcmp(operation, "open-") == 0)
 		{
@@ -379,6 +494,14 @@ int main(int argc, char** argv)
 		else if(strcmp(operation, "read-") == 0)
 		{
 			nread(sfd);
+			operation[0] = '\0';
+			operation[4] = '\0';
+			read(sfd, operation, 5);
+			operation[5] = '\0';
+		}
+		else if(strcmp(operation, "write") == 0)
+		{
+			nwrite(sfd);
 			operation[0] = '\0';
 			operation[4] = '\0';
 			read(sfd, operation, 5);
