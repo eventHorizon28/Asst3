@@ -9,18 +9,49 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include "libnetfiles.h"
+#include <arpa/inet.h>
 
 #define PORT 34567
 #define INT_STR_LEN 8
 
 int sfd;
 
+int ipfind(char * name , char* ip) 
+{
+	struct hostent *he;     
+	struct in_addr **addr_list;     
+	int i;     
+
+	if((he = gethostbyname( name )) == NULL)     
+	{
+		return -1;
+	}
+
+	addr_list = (struct in_addr **) he->h_addr_list;
+	for(i = 0; addr_list[i] != NULL; i++)
+	{
+		strcpy(ip , inet_ntoa(*addr_list[i]) );
+		return 0;
+	}
+	return 1;
+}
+
 int netserverinit(char* hostname)
 {
+	char ip[15];
 	struct sockaddr_in address;
 	sfd = -1;
 	struct sockaddr_in serv_addr;
+	int h_errno;
 	//struct hostent * server_addr = gethostbyname("pwd.cs.rutgers.edu");
+
+	if(ipfind(hostname, ip) == -1)
+	{
+		h_errno = HOST_NOT_FOUND;
+		return -1;
+	}
+
+	printf("%s\n", ip);
 
 	if ((sfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
 	{
@@ -34,7 +65,7 @@ int netserverinit(char* hostname)
 	serv_addr.sin_port = htons(PORT);
       
     // Convert IPv4 and IPv6 addresses from text to binary form
-	if(inet_pton(AF_INET, "128.6.13.176", &serv_addr.sin_addr) == -1) 
+	if(inet_pton(AF_INET, ip, &serv_addr.sin_addr) == -1) 
 	{
 		printf("\nInvalid address/ Address not supported \n");
 		return -1;
