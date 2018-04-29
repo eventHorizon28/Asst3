@@ -397,7 +397,7 @@ int nread(int sfd)
 		write(sfd, bytes_read_str, INT_STR_LEN);
 		write(sfd, read_buffer, bytes_read);
 	}
-
+	free(read_buffer);
 }
 
 void nwrite(int sfd)
@@ -430,6 +430,9 @@ void nwrite(int sfd)
 			break;
 		}
 	}
+
+	write_buffer = (char*)malloc(atoi(bytes_str)*sizeof(char));
+	read(sfd, write_buffer, atoi(bytes_str));
 
 	if(checkNode(sfd, atoi(netfd_str)) == -1)
 	{
@@ -473,10 +476,6 @@ void nwrite(int sfd)
 		return;
 	}	
 
-	//MIGHT HAVE TO TAKE CARE OF NULL TERMINATION
-	write_buffer = (char*)malloc(atoi(bytes_str)*sizeof(char));
-	read(sfd, write_buffer, atoi(bytes_str));
-	
 	bytes_wrote = write(atoi(netfd_str), write_buffer, atoi(bytes_str));
 	if(bytes_wrote == -1)
 	{
@@ -555,7 +554,7 @@ void nwrite(int sfd)
 
 		write(sfd, bytes_wrote_str, INT_STR_LEN);
 	}
-
+	free(write_buffer);
 }
 
 void nclose(int sfd)
@@ -716,6 +715,7 @@ void * worker_thread(void * arg)
 		else
 			break;
 	}
+	close(sfd);
 
 /*	read(new_socket, param_length, 5);
 
@@ -785,7 +785,8 @@ int main(int argc, char** argv)
 		fd_map[i] = NULL;
 	}
 
-//WHAT WOULD HAPPEN TO THE "SFD" IF THERE ARE MULTIPLE CALLS TO THE SERVER?
+	//WHAT WOULD HAPPEN TO THE "SFD" IF THERE ARE MULTIPLE CALLS TO THE SERVER?
+
 	while(1)
 	{
 		sfd = accept(new_socket, (struct sockaddr *)&address, (socklen_t*)&addrlen);
@@ -809,7 +810,16 @@ int main(int argc, char** argv)
 		num_clients--;
 	}
 
-	/*read(sfd, operation, 5);
+/*
+	sfd = accept(new_socket, (struct sockaddr *)&address, (socklen_t*)&addrlen);
+
+	if(sfd == -1)
+	{
+		printf("accept failure\n");
+		return -1;
+	}
+
+	read(sfd, operation, 5);
 	operation[5] = '\0';
 
 	while(1)
@@ -850,8 +860,8 @@ int main(int argc, char** argv)
 		else
 			break;
 	}
-*/
 
+*/
 
 	for(i=0; i<10; i++)
 		if(fd_map[i] != NULL)

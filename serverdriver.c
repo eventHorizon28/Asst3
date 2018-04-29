@@ -46,21 +46,21 @@ int main(int argc, char** argv)
 		i++;
 	}
 
-	
+	netread(netfd, buffer, 100);
+	netwrite(netfd, write_buff, 7);
 	netclose(netfd);
-	printf("netfd closed\n");
+//	printf("netfd closed\n");
 	while(i >= 0)
 	{
 		printf("closing netfd2 = %d\n", fd_arr[i]);
 		netclose(fd_arr[i]);
 		i--;
 	}
-	netread(netfd, buffer, 100);
+	//netread(netfd, buffer, 100);
 	netwrite(netfd, write_buff, 7);
 
 	netclose(netfd);
 	
-	netread(netfd, buffer, 100);
 	printf("%s\n", buffer);
 
 	return 0;
