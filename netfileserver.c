@@ -11,11 +11,11 @@
 #include <pthread.h>
 #include <unistd.h>
 
-#define PORT 34568
+#define PORT 34569
 #define INT_STR_LEN 8
 
 
-pthread_mutex_t mute = PTHREAD_MUTEX_INITIALIZER;
+//pthread_mutex_t mute = PTHREAD_MUTEX_INITIALIZER;
 
 typedef struct _Node
 {
@@ -668,15 +668,13 @@ void nclose(int sfd)
 
 void * worker_thread(void * arg)
 {
-	int sfd = (int)(long)arg;
+	int sfd = *(int*) arg;
 	int readval = 0;
 	char operation[6];
 
-	printf("STARTED\n");
-	
 	//start of critical section due to read fuction lock it
 	//m isglobal used to init mutex
-	pthread_mutex_lock(&mute);
+	//pthread_mutex_lock(&mute);
 
 	readval = read(sfd, operation, 5);		
 	operation[5] = '\0';
@@ -688,6 +686,7 @@ void * worker_thread(void * arg)
 			nopen(sfd);
 			operation[0] = '\0';
 			operation[4] = '\0';
+			readval = read(sfd, operation, 5);
 			operation[5] = '\0';
 		}
 		else if(strcmp(operation, "read-") == 0)
@@ -695,17 +694,27 @@ void * worker_thread(void * arg)
 			nread(sfd);
 			operation[0] = '\0';
 			operation[4] = '\0';
+			readval = read(sfd, operation, 5);
 			operation[5]='\0';
 		}
-		/*else if(strcmp(operation, "write") == 0)
-			nwrite();
+		else if(strcmp(operation, "write") == 0)
+		{
+			nwrite(sfd);
+			operation[0] = '\0';
+			operation[4] = '\0';
+			readval = read(sfd, operation, 5);
+			operation[5]='\0';
+		}	
 		else if(strcmp(operation, "close") == 0)
-			nclose();*/
+		{
+			nclose(sfd);
+			operation[0] = '\0';
+			operation[4] = '\0';
+			readval = read(sfd, operation, 5);
+			operation[5]='\0';
+		}				
 		else
 			break;
-
-		readval = read(sfd, operation, 5);
-		printf("readval = %d\n", readval);
 	}
 
 /*	read(new_socket, param_length, 5);
@@ -726,7 +735,7 @@ void * worker_thread(void * arg)
 	read(new_socket, buffer, atoi(param_length));
 	printf("%s\n", buffer);
 */
-	pthread_mutex_unlock(&mute);
+	//pthread_mutex_unlock(&mute);
 	return NULL;
 }
 
@@ -777,16 +786,30 @@ int main(int argc, char** argv)
 	}
 
 //WHAT WOULD HAPPEN TO THE "SFD" IF THERE ARE MULTIPLE CALLS TO THE SERVER?
-	sfd = accept(new_socket, (struct sockaddr *)&address, (socklen_t*)&addrlen);
+	while(1)
+	{
+		sfd = accept(new_socket, (struct sockaddr *)&address, (socklen_t*)&addrlen);
 
 		if(sfd == -1)
 		{
 			printf("accept failure\n");
 			return -1;
 		}
-	printf("connection established\n");
-	
-	read(sfd, operation, 5);
+
+		//when they accept a client increment the counter
+		num_clients++;
+		int k=0;
+		
+		if(pthread_create(&tid, NULL, worker_thread, (void *)&sfd) != 0)
+		{
+			printf("ERROR; return code from pthread_create() is %s\n", strerror(errno));
+			return(-1);
+		}
+		pthread_detach(tid);
+		num_clients--;
+	}
+
+	/*read(sfd, operation, 5);
 	operation[5] = '\0';
 
 	while(1)
@@ -827,45 +850,8 @@ int main(int argc, char** argv)
 		else
 			break;
 	}
-/*
-	int rc;
-	
-	while(1)
-	{
-		sfd = accept(new_socket, (struct sockaddr *)&address, (socklen_t*)&addrlen);
-	printf("connection established\n");
-	
-		if(sfd == -1)
-		{
-			printf("accept failure\n");
-			return -1;
-		}
-		//when they accept a client increment the counter
-		num_clients++;
-		
-		int k=0;
-		if(k<num_clients)
-		{
-			rc=pthread_create(&tid, NULL, worker_thread, (void *)(long)sfd);
-
-			//printf("%d\n",rc);
-			//	pthread_join(tid,NULL);
-			//	printf("joinedd\n");
-			if(rc)
-			{
-				printf("ERROR; return code from pthread_create() is %d\n", rc);
-				return(-1);
-
-			}
-			pthread_detach(tid);
-
-			num_clients--;
-		}
-		//if flag is == to something make swicth then send it 
-		//printf("%d\n",rc);
-		k++;
-	}
 */
+
 
 	for(i=0; i<10; i++)
 		if(fd_map[i] != NULL)

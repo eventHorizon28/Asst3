@@ -35,6 +35,7 @@ int main(int argc, char** argv)
 	printf("%d\n", netfd);
 
 	netfd2 = netopen("./test.txt", O_RDWR);
+	printf("netfd2 = %d\n", netfd2);
 
 	i = 0;
 	while(netfd2%10 != netfd%10 && i<20)
@@ -45,9 +46,12 @@ int main(int argc, char** argv)
 		i++;
 	}
 
+	
 	netclose(netfd);
+	printf("netfd closed\n");
 	while(i >= 0)
 	{
+		printf("closing netfd2 = %d\n", fd_arr[i]);
 		netclose(fd_arr[i]);
 		i--;
 	}
