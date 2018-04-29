@@ -1,28 +1,139 @@
-#include<stdio.h>
-#include<stdlib.h>
-#include<sys/socket.h>
-#include<netinet/in.h>
-#include<string.h>
-#include<sys/types.h>
-#include<errno.h>
-#include<ctype.h>
-#include<sys/stat.h>
-#include<fcntl.h>
-#include<pthread.h>
-#include<unistd.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <string.h>
+#include <sys/types.h>
+#include <errno.h>
+#include <ctype.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <pthread.h>
+#include <unistd.h>
 
-#define PORT 34567
+#define PORT 34568
 #define INT_STR_LEN 8
 
 
 pthread_mutex_t mute = PTHREAD_MUTEX_INITIALIZER;
 
+typedef struct _Node
+{
+	int socket;
+	int fildes;
+	struct _Node * next;
+} Node;
+
+Node ** fd_map;
+
+//LINKED LIST FUNCTIONS
+void createNode(int sfd, int netfd)
+{
+	int key = netfd % 10;
+	Node * new_node = (Node*)malloc(sizeof(Node));
+	new_node->socket = sfd;
+	new_node->fildes = netfd;
+	new_node->next = NULL;
+
+	Node * temp_node = fd_map[key];
+
+	if(temp_node == NULL)
+	{
+		fd_map[key] = new_node;
+		return;
+	}
+
+	while(temp_node->next != NULL)
+	{
+		temp_node = temp_node->next;
+	}
+	temp_node->next = new_node;
+
+	return;
+}
+
+int checkNode(int sfd, int netfd)
+{
+	int key = netfd % 10;
+	Node * temp_node = fd_map[key];
+
+	if(temp_node == NULL)
+		return -1;
+
+	if(temp_node->fildes == netfd)
+		if(temp_node->socket == sfd)
+			return 1;
+
+	while(temp_node->next != NULL)
+	{
+		if(temp_node->next->fildes == netfd)
+			if(temp_node->next->socket == sfd)
+				return 1;
+
+		temp_node = temp_node->next;
+	}
+
+	return -1;
+}
+
+void deleteNode(int sfd, int netfd)
+{
+	int key = netfd % 10;
+	Node * delete_node = fd_map[key];
+	Node * temp_node;
+
+	if(delete_node == NULL)
+		return;
+
+	//if root is the one to be deleted
+	if(delete_node->fildes == netfd)
+		if(delete_node->socket == sfd)
+		{
+			temp_node = delete_node;
+			if(delete_node->next == NULL)
+				fd_map[key] = NULL;
+			else
+				fd_map[key] = delete_node->next;
+			free(temp_node);
+			return;
+		}
+
+	while(delete_node->next != NULL)
+	{
+		if(delete_node->next->fildes == netfd)
+			if(delete_node->next->socket == sfd)
+			{
+				temp_node = delete_node->next;
+				if(delete_node->next->next == NULL)
+					delete_node->next = NULL;
+				else
+					delete_node->next = delete_node->next->next;
+				free(temp_node);
+				return;
+			}
+		delete_node = delete_node->next;
+	}
+
+	return;
+}
+
+void freeNode(Node * temp_node)
+{
+	if(temp_node == NULL)
+		return;
+
+	if(temp_node->next != NULL)
+		freeNode(temp_node->next);
+
+	free(temp_node);
+}
+
+//NET FUNCTIONS
 void nopen(int sfd)
 {
-	int i, fd = -1, n_errno = -1;
+	int i, netfd = -1, n_errno = -1;
 	char param_length[INT_STR_LEN];
 	char * open_path;
-//cjamge the length of flags_str string
 	char flags_str[2];
 	char fd_str[INT_STR_LEN];
 	char errno_str[INT_STR_LEN];
@@ -44,13 +155,13 @@ void nopen(int sfd)
 	flags_str[1] = '\0';
 	
 	if(O_RDWR == atoi(flags_str))
-		fd = open(open_path, O_RDWR);
+		netfd = open(open_path, O_RDWR);
 	else if(O_RDONLY == atoi(flags_str))
-		fd = open(open_path, O_RDONLY);
+		netfd = open(open_path, O_RDONLY);
 	else
-		fd = open(open_path, O_WRONLY);
+		netfd = open(open_path, O_WRONLY);
 
-	if(fd == -1)
+	if(netfd == -1)
 	{
 		n_errno = errno;
 		write(sfd, "fail", 4);
@@ -90,35 +201,36 @@ void nopen(int sfd)
 	}
 	else
 	{
+		createNode(sfd, netfd);
+
 		write(sfd, "pass", 4);
 
-		sprintf(fd_str, "%d", fd);
-
+		sprintf(fd_str, "%d", netfd);
 		switch(strlen(fd_str))
 		{
 			case 0:
 				printf("no string passed");
 				return;
 			case 1:
-				sprintf(fd_str, "%d-------", fd);
+				sprintf(fd_str, "%d-------", netfd);
 				break;
 			case 2:
-				sprintf(fd_str, "%d------", fd);
+				sprintf(fd_str, "%d------", netfd);
 				break;
 			case 3:
-				sprintf(fd_str, "%d-----", fd);
+				sprintf(fd_str, "%d-----", netfd);
 				break;
 			case 4:
-				sprintf(fd_str, "%d----", fd);
+				sprintf(fd_str, "%d----", netfd);
 				break;
 			case 5:
-				sprintf(fd_str, "%d---", fd);
+				sprintf(fd_str, "%d---", netfd);
 				break;
 			case 6:
-				sprintf(fd_str, "%d--", fd);
+				sprintf(fd_str, "%d--", netfd);
 				break;
 			case 7:
-				sprintf(fd_str, "%d-", fd);
+				sprintf(fd_str, "%d-", netfd);
 				break;
 			case 8:
 				break;
@@ -163,6 +275,49 @@ int nread(int sfd)
 
 	//MIGHT HAVE TO TAKE CARE OF NULL TERMINATION
 	read_buffer = (char*)malloc(atoi(bytes_str)*sizeof(char));
+	
+	if(checkNode(sfd, atoi(netfd_str)) == -1)
+	{
+		bytes_read == -1;
+		n_errno = EBADF;
+
+		write(sfd, "fail", 4);
+		sprintf(errno_str, "%d", n_errno);
+
+		switch(strlen(errno_str))
+		{
+			case 0:
+				printf("no string passed");
+				return;
+			case 1:
+				sprintf(errno_str, "%d-------", n_errno);
+				break;
+			case 2:
+				sprintf(errno_str, "%d------", n_errno);
+				break;
+			case 3:
+				sprintf(errno_str, "%d-----", n_errno);
+				break;
+			case 4:
+				sprintf(errno_str, "%d----", n_errno);
+				break;
+			case 5:
+				sprintf(errno_str, "%d---", n_errno);
+				break;
+			case 6:
+				sprintf(errno_str, "%d--", n_errno);
+				break;
+			case 7:
+				sprintf(errno_str, "%d-", n_errno);
+				break;
+			case 8:
+				break;
+		}
+
+		write(sfd, errno_str, INT_STR_LEN);
+		return;
+	}
+
 	bytes_read = read(atoi(netfd_str), read_buffer, atoi(bytes_str));
 	if(bytes_read == -1)
 	{
@@ -255,7 +410,6 @@ void nwrite(int sfd)
 	char* write_buffer;
 	int n_errno;
 	char errno_str[INT_STR_LEN];
-	int netfd;
 
 	read(sfd, netfd_str, INT_STR_LEN);
 	read(sfd, bytes_str, INT_STR_LEN);
@@ -276,6 +430,48 @@ void nwrite(int sfd)
 			break;
 		}
 	}
+
+	if(checkNode(sfd, atoi(netfd_str)) == -1)
+	{
+		bytes_wrote == -1;
+		n_errno = EBADF;
+
+		write(sfd, "fail", 4);
+		sprintf(errno_str, "%d", n_errno);
+
+		switch(strlen(errno_str))
+		{
+			case 0:
+				printf("no string passed");
+				return;
+			case 1:
+				sprintf(errno_str, "%d-------", n_errno);
+				break;
+			case 2:
+				sprintf(errno_str, "%d------", n_errno);
+				break;
+			case 3:
+				sprintf(errno_str, "%d-----", n_errno);
+				break;
+			case 4:
+				sprintf(errno_str, "%d----", n_errno);
+				break;
+			case 5:
+				sprintf(errno_str, "%d---", n_errno);
+				break;
+			case 6:
+				sprintf(errno_str, "%d--", n_errno);
+				break;
+			case 7:
+				sprintf(errno_str, "%d-", n_errno);
+				break;
+			case 8:
+				break;
+		}
+
+		write(sfd, errno_str, INT_STR_LEN);
+		return;
+	}	
 
 	//MIGHT HAVE TO TAKE CARE OF NULL TERMINATION
 	write_buffer = (char*)malloc(atoi(bytes_str)*sizeof(char));
@@ -381,6 +577,48 @@ void nclose(int sfd)
 		}
 	}
 
+	if(checkNode(sfd, atoi(netfd_str)) == -1)
+	{
+		close_value == -1;
+		n_errno = EBADF;
+
+		write(sfd, "fail", 4);
+		sprintf(errno_str, "%d", n_errno);
+
+		switch(strlen(errno_str))
+		{
+			case 0:
+				printf("no string passed");
+				return;
+			case 1:
+				sprintf(errno_str, "%d-------", n_errno);
+				break;
+			case 2:
+				sprintf(errno_str, "%d------", n_errno);
+				break;
+			case 3:
+				sprintf(errno_str, "%d-----", n_errno);
+				break;
+			case 4:
+				sprintf(errno_str, "%d----", n_errno);
+				break;
+			case 5:
+				sprintf(errno_str, "%d---", n_errno);
+				break;
+			case 6:
+				sprintf(errno_str, "%d--", n_errno);
+				break;
+			case 7:
+				sprintf(errno_str, "%d-", n_errno);
+				break;
+			case 8:
+				break;
+		}
+
+		write(sfd, errno_str, INT_STR_LEN);
+		return;
+	}
+
 	close_value = close(atoi(netfd_str));
 	if(close_value == -1)
 	{
@@ -423,6 +661,7 @@ void nclose(int sfd)
 	}
 	else
 	{
+		deleteNode(sfd, atoi(netfd_str));
 		write(sfd, "pass", 4);
 	}
 }
@@ -531,6 +770,12 @@ int main(int argc, char** argv)
 		return -1;
 	}
 
+	fd_map = (Node**)malloc(10*sizeof(Node*));
+ 	for(i = 0; i<10; i++)
+	{
+		fd_map[i] = NULL;
+	}
+
 //WHAT WOULD HAPPEN TO THE "SFD" IF THERE ARE MULTIPLE CALLS TO THE SERVER?
 	sfd = accept(new_socket, (struct sockaddr *)&address, (socklen_t*)&addrlen);
 
@@ -541,10 +786,10 @@ int main(int argc, char** argv)
 		}
 	printf("connection established\n");
 	
- 	read(sfd, operation, 5);
+	read(sfd, operation, 5);
 	operation[5] = '\0';
 
-	for(i = 0; i < 5; i++)
+	while(1)
 	{
 		if(strcmp(operation, "open-") == 0)
 		{
@@ -571,7 +816,7 @@ int main(int argc, char** argv)
 			read(sfd, operation, 5);
 			operation[5] = '\0';
 		}
-		else
+		else if(strcmp(operation, "close") == 0)
 		{
 			nclose(sfd);
 			operation[0] = '\0';
@@ -579,6 +824,8 @@ int main(int argc, char** argv)
 			read(sfd, operation, 5);
 			operation[5] = '\0';
 		}
+		else
+			break;
 	}
 /*
 	int rc;
@@ -619,5 +866,11 @@ int main(int argc, char** argv)
 		k++;
 	}
 */
+
+	for(i=0; i<10; i++)
+		if(fd_map[i] != NULL)
+			freeNode(fd_map[i]);
+	free(fd_map);
+
 	return 0;
 }

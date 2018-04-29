@@ -4,7 +4,7 @@
 4. do error checking for -1 fd on the client side itself?
 5. set h_errno for network establishment errors
 6. when do we have to close the socket?
-
+7. Can 1 client open multiple fds to the same file? test it on local open
 ERRORS:
 1. nread not working for some reason
 2. threads not working

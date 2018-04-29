@@ -11,7 +11,7 @@
 #include "libnetfiles.h"
 #include <arpa/inet.h>
 
-#define PORT 34567
+#define PORT 34568
 #define INT_STR_LEN 8
 
 int sfd;
