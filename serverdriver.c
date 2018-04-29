@@ -62,4 +62,6 @@ int main(int argc, char** argv)
 	
 	netread(netfd, buffer, 100);
 	printf("%s\n", buffer);
+
+	return 0;
 }
