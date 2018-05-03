@@ -14,7 +14,12 @@
 #define PORT 34569
 #define INT_STR_LEN 8
 
-int sfd;
+#define UNRESTRICTED 0
+#define EXCLUSIVE 1
+#define TRANSACTION 2
+#define INVALID 9
+
+int sfd, h_errno;
 
 int ipfind(char * name , char* ip) 
 {
@@ -36,13 +41,13 @@ int ipfind(char * name , char* ip)
 	return 1;
 }
 
-int netserverinit(char* hostname)
+int netserverinit(char* hostname, char* filemode)
 {
 	char ip[15];
 	struct sockaddr_in address;
 	sfd = -1;
 	struct sockaddr_in serv_addr;
-	int h_errno;
+	char filemode_int_str[2];
 	//struct hostent * server_addr = gethostbyname("pwd.cs.rutgers.edu");
 
 	if(ipfind(hostname, ip) == -1)
@@ -51,11 +56,11 @@ int netserverinit(char* hostname)
 		return -1;
 	}
 
-	printf("%s\n", ip);
+	//printf("%s\n", ip);
 
 	if ((sfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
 	{
-		printf("\n Socket creation error \n");
+		//printf("\n Socket creation error \n");
 		return -1;
 	}
   
@@ -67,16 +72,46 @@ int netserverinit(char* hostname)
     // Convert IPv4 and IPv6 addresses from text to binary form
 	if(inet_pton(AF_INET, ip, &serv_addr.sin_addr) == -1) 
 	{
-		printf("\nInvalid address/ Address not supported \n");
+		//printf("\nInvalid address/ Address not supported \n");
 		return -1;
 	}
  
 	if (connect(sfd,  (struct sockaddr *)&serv_addr, sizeof(serv_addr)) == -1)
 	{
-		printf("\nConnection Failed, errno %s \n", strerror(errno));
+		//printf("\nConnection Failed, errno %s \n", strerror(errno));
 		return -1;
 	}
-	printf("connection established\n");
+
+	
+	//printf("connection established\n");
+
+	if(strcmp(filemode, "unrestricted") == 0)
+	{
+		sprintf(filemode_int_str, "%d", UNRESTRICTED);
+		filemode_int_str[1] = '\0';
+		write(sfd, filemode_int_str, 1);
+	}
+	else if(strcmp(filemode, "exclusive") == 0)
+	{
+		sprintf(filemode_int_str, "%d", EXCLUSIVE);
+		filemode_int_str[1] = '\0';
+		write(sfd, filemode_int_str, 1);
+	}
+	else if(strcmp(filemode, "transaction") == 0)
+	{
+		sprintf(filemode_int_str, "%d", TRANSACTION);
+		filemode_int_str[1] = '\0';
+		write(sfd, filemode_int_str, 1);
+	}
+	else
+	{
+		sprintf(filemode_int_str, "%d", INVALID);
+		filemode_int_str[1] = '\0';
+		write(sfd, filemode_int_str, 1);
+		close(sfd)
+		h_errno = INVALID_FILE_MODE;
+		return -1;
+	}
 
 	return sfd;
 }
@@ -110,7 +145,7 @@ int netopen(char* open_path, int flags)
 	switch(strlen(param_length))
 	{
 		case 0:
-			printf("no string passed");
+			//printf("no string passed");
 			return 0;
 		case 1:
 			sprintf(param_length, "%d-------", strlen(open_path));
@@ -161,7 +196,7 @@ int netopen(char* open_path, int flags)
 			}
 		}
 		errno = atoi(errno_str);
-		printf("%s\n", strerror(errno));
+		//printf("%s\n", strerror(errno));
 		netfd = -1;
 	}
 	//else read the netfd and convert it to the negative fd
@@ -181,7 +216,7 @@ int netopen(char* open_path, int flags)
 		}
 
 		netfd = atoi(netfd_str);
-		printf("fd = %d\n", netfd);
+		//printf("fd = %d\n", netfd);
 		netfd += 10;
 		netfd *= -1;
 	}
@@ -218,7 +253,7 @@ int netread(int netfd, char* buffer, int bytes)
 	switch(strlen(bytes_str))
 	{
 		case 0:
-			printf("no string passed");
+			//printf("no string passed");
 			return 0;
 		case 1:
 			sprintf(bytes_str, "%d-------", bytes);
@@ -252,7 +287,7 @@ int netread(int netfd, char* buffer, int bytes)
 	switch(strlen(netfd_str))
 	{
 		case 0:
-			printf("no string passed");
+			//printf("no string passed");
 			return 0;
 		case 1:
 			sprintf(netfd_str, "%d-------", netfd);
@@ -303,7 +338,7 @@ int netread(int netfd, char* buffer, int bytes)
 			}
 		}
 		errno = atoi(errno_str);
-		printf("%s\n", strerror(errno));
+		//printf("%s\n", strerror(errno));
 		return -1;
 	}
 	else
@@ -355,7 +390,7 @@ int netwrite(int netfd, char* buffer, int bytes)
 	switch(strlen(bytes_str))
 	{
 		case 0:
-			printf("error in num_bytes\n");
+			//printf("error in num_bytes\n");
 			return 0;
 		case 1:
 			sprintf(bytes_str, "%d-------", bytes);
@@ -389,7 +424,7 @@ int netwrite(int netfd, char* buffer, int bytes)
 	switch(strlen(netfd_str))
 	{
 		case 0:
-			printf("error in netfd\n");
+			//printf("error in netfd\n");
 			return 0;
 		case 1:
 			sprintf(netfd_str, "%d-------", netfd);
@@ -441,7 +476,7 @@ int netwrite(int netfd, char* buffer, int bytes)
 			}
 		}
 		errno = atoi(errno_str);
-		printf("%s\n", strerror(errno));
+		//printf("%s\n", strerror(errno));
 		return -1;
 	}
 	else
@@ -482,7 +517,7 @@ int netclose(int netfd)
 	switch(strlen(netfd_str))
 	{
 		case 0:
-			printf("error in netfd\n");
+			//printf("error in netfd\n");
 			return 0;
 		case 1:
 			sprintf(netfd_str, "%d-------", netfd);
@@ -531,7 +566,7 @@ int netclose(int netfd)
 			}
 		}
 		errno = atoi(errno_str);
-		printf("%s\n", strerror(errno));
+		//printf("%s\n", strerror(errno));
 		return -1;
 	}
 
